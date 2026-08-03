@@ -1,6 +1,7 @@
 # ======================================================================
 # OCP STRATEGIC INTELLIGENCE — Digital Twin Manufacturing
-# Version 20.1 — Fichier unique, toutes fonctionnalités
+# Version 20.0 — Prédiction PN RM + SHAP + Classification DAP/MAP
+# (sans optimisation)
 # ======================================================================
 
 import streamlit as st
@@ -222,7 +223,7 @@ ROLE_ICONS = {
 }
 
 # ======================================================================
-# CSS ET LOGO
+# CSS ET LOGO (inchangé)
 # ======================================================================
 
 COLORS = {
@@ -280,7 +281,7 @@ st.set_page_config(
 )
 
 # ======================================================================
-# INJECTION CSS COMPLÈTE
+# INJECTION CSS (inchangé)
 # ======================================================================
 
 def inject_css():
@@ -407,8 +408,12 @@ def inject_css():
             transform: translateY(-20px) rotate(0deg) scale(1);
             opacity: 0;
         }}
-        10% {{ opacity: 1; }}
-        90% {{ opacity: 1; }}
+        10% {{
+            opacity: 1;
+        }}
+        90% {{
+            opacity: 1;
+        }}
         100% {{
             transform: translateY(calc(100vh + 50px)) rotate(720deg) scale(0.3);
             opacity: 0;
@@ -1047,68 +1052,6 @@ def inject_css():
     </div>
     """, unsafe_allow_html=True)
 
-def inject_auth_css(colors, logo_url):
-    st.markdown(f"""
-    <style>
-    .auth-wrapper {{
-        max-width: 460px;
-        margin: 1.5rem auto 0 auto;
-        background: {colors['glass_bg']};
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border: 1px solid {colors['border']};
-        border-radius: 22px;
-        padding: 2rem 2.2rem 1.6rem 2.2rem;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.6), inset 0 0 50px rgba(0,255,127,0.03);
-    }}
-    .auth-logo-wrap {{
-        display:flex; justify-content:center; margin-bottom: 0.6rem;
-    }}
-    .auth-logo-wrap img {{
-        height: 64px; object-fit:contain;
-        filter: drop-shadow(0 0 18px rgba(0,255,127,0.55));
-        animation: authLogoPulse 3s ease-in-out infinite;
-    }}
-    @keyframes authLogoPulse {{
-        0%, 100% {{ filter: drop-shadow(0 0 12px rgba(0,255,127,0.4)); }}
-        50% {{ filter: drop-shadow(0 0 26px rgba(57,255,20,0.75)); }}
-    }}
-    .auth-title {{
-        text-align:center; font-family:'Orbitron', sans-serif; font-size:1.3rem;
-        letter-spacing:4px; color:{colors['emerald']};
-        text-shadow: 0 0 22px rgba(0,255,127,0.35);
-        margin-bottom: 0.15rem;
-    }}
-    .auth-subtitle {{
-        text-align:center; font-size:0.72rem; letter-spacing:3px; text-transform:uppercase;
-        color:#7fd8a0; margin-bottom: 1.3rem;
-    }}
-    .auth-clock {{
-        text-align:center; font-family:'Orbitron', sans-serif; font-size:0.78rem;
-        color:#5f9c78; letter-spacing:2px; margin-bottom:1rem;
-    }}
-    .auth-divider {{
-        display:flex; align-items:center; text-align:center; color:#5f9c78;
-        font-size:0.75rem; margin: 1rem 0; letter-spacing:1px;
-    }}
-    .auth-divider::before, .auth-divider::after {{
-        content:''; flex:1; border-bottom: 1px solid {colors['border_soft']};
-    }}
-    .auth-divider span {{ padding: 0 0.8rem; }}
-    .role-badge-select {{
-        font-size:0.72rem; color:#8fd6ab; letter-spacing:1px; margin-bottom:0.2rem;
-    }}
-    </style>
-    """, unsafe_allow_html=True)
-
-def render_header(colors, logo_url, title="OCP STRATEGIC INTELLIGENCE", subtitle="Digital Twin Manufacturing"):
-    st.markdown(f"""
-    <div class="auth-logo-wrap"><img src="{logo_url}" alt="OCP"></div>
-    <div class="auth-title">{title}</div>
-    <div class="auth-subtitle">{subtitle}</div>
-    <div class="auth-clock">⏱ {datetime.now().strftime('%A %d %B %Y — %H:%M:%S')}</div>
-    """, unsafe_allow_html=True)
-
 # ======================================================================
 # FONCTIONS UTILITAIRES
 # ======================================================================
@@ -1249,7 +1192,7 @@ def render_kpi_card(label, value, icon, delta=None, delta_color="up"):
     """, unsafe_allow_html=True)
 
 # ======================================================================
-# MODÈLES
+# MODÈLES AVEC CACHING
 # ======================================================================
 
 @st.cache_resource
@@ -1263,6 +1206,7 @@ def train_random_forest(df):
 
 @st.cache_resource
 def train_quality_classifier(df):
+    # Définition de la qualité selon les règles DAP/MAP
     def quality(rm):
         if rm < 1.10:
             return "MAP"
@@ -1271,10 +1215,12 @@ def train_quality_classifier(df):
         else:
             return np.nan
     df_clean = df.copy()
+    # Conversion numérique
     for col in FEATURES + [TARGET]:
         df_clean[col] = pd.to_numeric(df_clean[col], errors="coerce")
     df_clean["QUALITY"] = df_clean[TARGET].apply(quality)
     df_clean = df_clean.dropna(subset=["QUALITY"])
+    # Si pas assez de données, génération synthétique
     if len(df_clean) < 20 or len(df_clean["QUALITY"].unique()) < 2:
         np.random.seed(42)
         n_synth = 200
@@ -1309,7 +1255,7 @@ def train_quality_classifier(df):
     return clf
 
 # ======================================================================
-# VISUALISATIONS 3D
+# VISUALISATIONS 3D (inchangées)
 # ======================================================================
 
 def gallery_scatter3d(df):
@@ -1455,28 +1401,70 @@ GALLERY = {
 }
 
 # ======================================================================
-# ONGLETS
+# AUTHENTIFICATION AFFICHAGE
 # ======================================================================
 
-TAB_DEFS = [
-    ("page1", "📁 Data Import"),
-    ("page2", "🟢 Command Center & Global Insights"),
-    ("page3", "🌐 3D Analytics & Monitoring"),
-    ("page4", "🤖 Prédiction & SHAP"),
-    ("page5", "📤 Reports & Export"),
-    ("page6", "👤 User Management"),
-]
+def inject_auth_css(colors, logo_url):
+    st.markdown(f"""
+    <style>
+    .auth-wrapper {{
+        max-width: 460px;
+        margin: 1.5rem auto 0 auto;
+        background: {colors['glass_bg']};
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid {colors['border']};
+        border-radius: 22px;
+        padding: 2rem 2.2rem 1.6rem 2.2rem;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.6), inset 0 0 50px rgba(0,255,127,0.03);
+    }}
+    .auth-logo-wrap {{
+        display:flex; justify-content:center; margin-bottom: 0.6rem;
+    }}
+    .auth-logo-wrap img {{
+        height: 64px; object-fit:contain;
+        filter: drop-shadow(0 0 18px rgba(0,255,127,0.55));
+        animation: authLogoPulse 3s ease-in-out infinite;
+    }}
+    @keyframes authLogoPulse {{
+        0%, 100% {{ filter: drop-shadow(0 0 12px rgba(0,255,127,0.4)); }}
+        50% {{ filter: drop-shadow(0 0 26px rgba(57,255,20,0.75)); }}
+    }}
+    .auth-title {{
+        text-align:center; font-family:'Orbitron', sans-serif; font-size:1.3rem;
+        letter-spacing:4px; color:{colors['emerald']};
+        text-shadow: 0 0 22px rgba(0,255,127,0.35);
+        margin-bottom: 0.15rem;
+    }}
+    .auth-subtitle {{
+        text-align:center; font-size:0.72rem; letter-spacing:3px; text-transform:uppercase;
+        color:#7fd8a0; margin-bottom: 1.3rem;
+    }}
+    .auth-clock {{
+        text-align:center; font-family:'Orbitron', sans-serif; font-size:0.78rem;
+        color:#5f9c78; letter-spacing:2px; margin-bottom:1rem;
+    }}
+    .auth-divider {{
+        display:flex; align-items:center; text-align:center; color:#5f9c78;
+        font-size:0.75rem; margin: 1rem 0; letter-spacing:1px;
+    }}
+    .auth-divider::before, .auth-divider::after {{
+        content:''; flex:1; border-bottom: 1px solid {colors['border_soft']};
+    }}
+    .auth-divider span {{ padding: 0 0.8rem; }}
+    .role-badge-select {{
+        font-size:0.72rem; color:#8fd6ab; letter-spacing:1px; margin-bottom:0.2rem;
+    }}
+    </style>
+    """, unsafe_allow_html=True)
 
-ROLE_PERMISSIONS = {
-    "Administrateur": {"page1", "page2", "page3", "page4", "page5", "page6"},
-    "Ingénieur procédé": {"page1", "page2", "page3", "page4", "page5"},
-    "Opérateur": {"page1", "page2", "page3", "page5"},
-    "Visiteur": {"page2", "page3"},
-}
-
-# ======================================================================
-# SECTIONS DE L'APPLICATION
-# ======================================================================
+def render_header(colors, logo_url, title="OCP STRATEGIC INTELLIGENCE", subtitle="Digital Twin Manufacturing"):
+    st.markdown(f"""
+    <div class="auth-logo-wrap"><img src="{logo_url}" alt="OCP"></div>
+    <div class="auth-title">{title}</div>
+    <div class="auth-subtitle">{subtitle}</div>
+    <div class="auth-clock">⏱ {datetime.now().strftime('%A %d %B %Y — %H:%M:%S')}</div>
+    """, unsafe_allow_html=True)
 
 def render_login_form():
     st.caption("💡 Tout email valide est accepté — le mot de passe est celui de la plateforme.")
@@ -1551,7 +1539,43 @@ def render_auth_screen(colors, logo_url):
         render_signup_form()
     st.markdown('</div>', unsafe_allow_html=True)
 
-# --- SECTION COMMAND CENTER ---
+def render_user_badge(user, colors):
+    icon = ROLE_ICONS.get(user["role"], "👤")
+    st.markdown(f"""
+    <span style="display:flex; align-items:center; gap:6px; color:#8fd6ab; font-size:0.8rem;">
+        {icon} <b style="color:{colors['white']};">{user['nom']}</b> · {user['role']}
+    </span>
+    """, unsafe_allow_html=True)
+
+def logout():
+    for key in ["auth_user", "auth_view", "remember_me"]:
+        st.session_state.pop(key, None)
+    st.rerun()
+
+# ======================================================================
+# ONGLETS : DÉFINITION ET PERMISSIONS
+# ======================================================================
+
+TAB_DEFS = [
+    ("page1", "📁 Data Import"),
+    ("page2", "🟢 Command Center & Global Insights"),
+    ("page3", "🌐 3D Analytics & Monitoring"),
+    ("page4", "🤖 Prédiction & SHAP"),
+    ("page5", "📤 Reports & Export"),
+    ("page6", "👤 User Management"),
+]
+
+ROLE_PERMISSIONS = {
+    "Administrateur": {"page1", "page2", "page3", "page4", "page5", "page6"},
+    "Ingénieur procédé": {"page1", "page2", "page3", "page4", "page5"},
+    "Opérateur": {"page1", "page2", "page3", "page5"},
+    "Visiteur": {"page2", "page3"},
+}
+
+# ======================================================================
+# SECTIONS DE L'APPLICATION (inchangées sauf section_prediction)
+# ======================================================================
+
 def section_command_center(df, model):
     render_page_title("🏭 PANORAMA PROCÉDÉ", "Pilotage intelligent en temps réel")
     latest = df.iloc[-1]
@@ -1730,7 +1754,6 @@ def section_command_center(df, model):
         """, unsafe_allow_html=True)
     st.caption(f"🕒 Dernière synchronisation : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
-# --- SECTION GALLERY 3D ---
 def section_gallery3d(df):
     render_page_title("🌐 VISUALISATIONS 3D", "Scatter · Surface · Mesh · Cone · Isosurface · Terrain · Radar · Heatmap · Bubble · Network")
     st.write("")
@@ -1742,7 +1765,6 @@ def section_gallery3d(df):
         st.markdown('</div>', unsafe_allow_html=True)
     st.caption("Toutes les vues sont interactives : rotation 360°, zoom, survol et sélection des points.")
 
-# --- SECTION MONITORING ---
 def section_monitoring(df):
     render_page_title("📈 MONITORING CAPTEURS", "Analyse temps réel des variables du procédé")
     st.write("")
@@ -1778,7 +1800,6 @@ def section_monitoring(df):
         st.dataframe(compute_statistics(df[stats_cols]).style.background_gradient(cmap="Greens"),
                      use_container_width=True)
 
-# --- SECTION ANALYSIS ---
 def section_analysis(df):
     render_page_title("🔍 ANALYSE EXPLORATOIRE", "Distributions, corrélations et dispersion des données")
     st.write("")
@@ -1823,7 +1844,6 @@ def section_analysis(df):
         )
         st.plotly_chart(fig, use_container_width=True)
 
-# --- SECTION SHAP ---
 def section_shap(model, df):
     render_page_title("🧠 INTERPRÉTABILITÉ SHAP", "Explication des décisions du modèle prédictif")
     if shap is None:
@@ -1880,7 +1900,6 @@ def section_shap(model, df):
     except Exception as e:
         st.error(f"Erreur lors du calcul SHAP : {e}")
 
-# --- SECTION REPORTS ---
 def section_reports(df):
     render_page_title("📤 EXPORT & RAPPORTS", "Téléchargement des données et rapports")
     c1, c2, c3 = st.columns(3)
@@ -1921,7 +1940,6 @@ def section_reports(df):
     st.markdown("---")
     st.dataframe(df.tail(20), use_container_width=True)
 
-# --- SECTION ADMIN USERS ---
 def section_admin_users():
     render_page_title("👤 GESTION DES UTILISATEURS", "Réservé aux administrateurs")
     users = list_users()
@@ -1945,7 +1963,6 @@ def section_admin_users():
         st.markdown("<hr style='border-color:rgba(0,255,127,0.06); margin:0.4rem 0;'>", unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# --- SECTION BI DASHBOARD ---
 def render_bi_dashboard(df):
     render_page_title("📊 TABLEAU DE BORD DÉCISIONNEL", "Intelligence décisionnelle · Analyse avancée")
     latest = df.iloc[-1]
@@ -2038,7 +2055,6 @@ def render_bi_dashboard(df):
     with cols_perf[3]:
         render_kpi_card("Qualité Prédiction", f"{min(100, pred_score):.0f}%", "🎯")
 
-# --- SECTION WORLD MAP ---
 def render_world_map(df):
     render_page_title("🌍 CARTE MONDIALE LOGISTIQUE", "Ammoniac · Acide phosphorique · Engrais phosphatés")
     st.write("")
@@ -2497,7 +2513,7 @@ def render_authenticated_app(user):
             st.info("Aucune donnée chargée. Allez dans l'onglet Data Import.")
 
         st.markdown("---")
-        st.caption("v20.1 · Toutes fonctionnalités")
+        st.caption("v20.0 · Prédiction + SHAP + Classification DAP/MAP")
 
     df = st.session_state.df
     if df is None:
@@ -2540,7 +2556,7 @@ def render_authenticated_app(user):
                 st.markdown("---")
                 section_monitoring(df)
             elif key == "page4":
-                section_prediction(df, model, clf)
+                section_prediction(df, model, clf)   # ← Ici : PN RM + classification + SHAP
             elif key == "page5":
                 section_reports(df)
             elif key == "page6":
@@ -2548,7 +2564,7 @@ def render_authenticated_app(user):
 
     st.markdown(f"""
     <div class="footer" style="display:flex;justify-content:space-between;align-items:center;padding:1rem 0.5rem;color:rgba(255,255,255,0.2);font-size:0.65rem;border-top:1px solid rgba(0,255,127,0.06);margin-top:2rem;letter-spacing:1px;">
-        <span>⚡ OCP Strategic Intelligence · Manufacturing Digital Twin · v20.1</span>
+        <span>⚡ OCP Strategic Intelligence · Manufacturing Digital Twin · v20.0</span>
         <span>{datetime.now().strftime('%Y-%m-%d %H:%M')}</span>
     </div>
     """, unsafe_allow_html=True)

@@ -4,7 +4,14 @@
 
 import streamlit as st
 from datetime import datetime
-
+from auth.authentication import init_db, render_auth_screen
+from app_pages.dashboard import section_command_center, render_bi_dashboard, render_world_map
+from app_pages.prediction import section_prediction
+from app_pages.analytics import section_gallery3d, section_monitoring, section_analysis
+from app_pages.settings import section_admin_users
+from models.training import train_random_forest, train_quality_classifier
+from utils.helpers import inject_css
+from utils.export import section_reports  # à créer si non existant
 from config import COLORS, LOGO_URL, TAB_DEFS, ROLE_PERMISSIONS
 from auth.authentication import init_db, render_auth_screen
 from utils.helpers import inject_css
